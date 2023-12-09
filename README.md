@@ -20,7 +20,7 @@ sudo mv ./ko /usr/bin
 
 Запуск приложения
 
-`docker run -it --rm ko.local/demo/cmd/demo:latest`
+`docker run -it --rm ko.local/github.com/driceman/demo/cmd/demo:latest`
 
 #### Приложение api-server
 
@@ -32,7 +32,7 @@ sudo mv ./ko /usr/bin
 
 Запуск приложения
 
-`docker run -it --rm -p 8080:8080 ko.local/demo/cmd/api-server:latest`
+`docker run -it --rm -p 8080:8080 ko.local/github.com/driceman/demo/cmd/api-server:latest`
 
 можно добавить к вызову `--env GIN_MODE=release`
 
@@ -53,3 +53,36 @@ curl 127.0.0.1:8080/books \
     --data '{"id": "4", "title": "Книга 4", "author": "Автор 4", "price": 149.99}'
 ```
 
+#### Приложение files-parser
+
+Сборка образа
+
+`ko build -PL ./cmd/files-parser`
+
+Запуск приложения
+
+`docker run -it --rm -v ./internal/csv-parser/stub.csv:/app/stub.csv ko.local/github.com/driceman/demo/cmd/files-parser:latest -fileType=csv -filePath=/app/stub.csv -fromByte=0 -rowsLimit=11`
+
+Тестирование
+
+`go test -timeout 30s -run=. github.com/drIceman/demo/internal/csv-parser`
+
+Бенчмарк
+
+`go test -benchmem -run=. -bench=. github.com/drIceman/demo/internal/csv-parser`
+
+Тестирование с файлом > 1Гб
+
+создать большой файл
+`TEST_1G=1 go test -run=^TestPrepare1G$ github.com/drIceman/demo/internal/csv-parser`
+
+запустить тест
+`TEST_1G=1 go test -v -benchmem -run=^BenchmarkParse1G$ -bench=^BenchmarkParse1G$ github.com/drIceman/demo/internal/csv-parser`
+
+Профилирование (на маленьких объемах не срабатывает)
+
+```
+go build ./cmd/files-parser
+./files-parser -fileType=csv -filePath=./internal/csv-parser/stub.csv -fromByte=0 -rowsLimit=11 -memProfilePath=prof.mprof
+go tool pprof files-parser prof.mprof
+```
