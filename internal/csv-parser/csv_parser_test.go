@@ -70,7 +70,9 @@ func TestParse(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotRecords, gotNewOffset, gotIsEOF, err := Parse(tt.args.filePath, tt.args.fromByte, tt.args.rowsLimit)
+			f, _ := os.Open(tt.args.filePath)
+
+			gotRecords, gotNewOffset, gotIsEOF, err := Parse(f, tt.args.fromByte, tt.args.rowsLimit)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Parse() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -102,7 +104,8 @@ func TestPrepare1G(t *testing.T) {
 
 func BenchmarkParse(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		Parse("./stub.csv", 0, 1)
+		f, _ := os.Open("./stub.csv")
+		Parse(f, 0, 1)
 	}
 }
 
@@ -113,7 +116,8 @@ func BenchmarkParse1G(b *testing.B) {
 	b.StartTimer()
 	fromByte := int64(0)
 	for {
-		_, newFromByte, isEOF, err := Parse("./stub_1g.csv", fromByte, 1000)
+		f, _ := os.Open("./stub_1g.csv")
+		_, newFromByte, isEOF, err := Parse(f, fromByte, 1000)
 		if err != nil || isEOF == true {
 			break
 		}
