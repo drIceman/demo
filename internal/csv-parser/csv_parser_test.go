@@ -9,9 +9,10 @@ import (
 
 func TestParse(t *testing.T) {
 	type args struct {
-		filePath  string
-		fromByte  int64
-		rowsLimit int64
+		filePath     string
+		fromByte     int64
+		rowsLimit    int64
+		threadsCount int64
 	}
 
 	var emptyRecords [][]string
@@ -25,7 +26,7 @@ func TestParse(t *testing.T) {
 	}{
 		{
 			name:          "Парсинг одной строки без сдвига",
-			args:          args{filePath: "./stub.csv", fromByte: 0, rowsLimit: 1},
+			args:          args{filePath: "./stub.csv", fromByte: 0, rowsLimit: 1, threadsCount: 1},
 			wantRecords:   [][]string{{"Поле 1", "Поле 2", "Поле 3", "Поле 4", "Поле 5", "Поле 6", "Поле 7", "Поле 8", "Поле 9", "Поле 10"}},
 			wantNewOffset: 131,
 			wantIsEOF:     false,
@@ -33,7 +34,7 @@ func TestParse(t *testing.T) {
 		},
 		{
 			name: "Парсинг двух строк без сдвига",
-			args: args{filePath: "./stub.csv", fromByte: 0, rowsLimit: 2},
+			args: args{filePath: "./stub.csv", fromByte: 0, rowsLimit: 2, threadsCount: 1},
 			wantRecords: [][]string{
 				{"Поле 1", "Поле 2", "Поле 3", "Поле 4", "Поле 5", "Поле 6", "Поле 7", "Поле 8", "Поле 9", "Поле 10"},
 				{"Поле 11", "Поле 12", "Поле 13", "Поле 14", "Поле 15", "Поле 16", "Поле 17", "Поле 18", "Поле 19", "Поле 20"},
@@ -44,7 +45,7 @@ func TestParse(t *testing.T) {
 		},
 		{
 			name:          "Парсинг одной строки со сдвигом",
-			args:          args{filePath: "./stub.csv", fromByte: 1392, rowsLimit: 1},
+			args:          args{filePath: "./stub.csv", fromByte: 1392, rowsLimit: 1, threadsCount: 1},
 			wantRecords:   [][]string{{"Поле 101", "Поле 102", "Поле 103", "Поле 104", "Поле 105", "Поле 106", "Поле 107", "Поле 108", "Поле 109", "Поле 110"}},
 			wantNewOffset: 1542,
 			wantIsEOF:     false,
@@ -52,7 +53,7 @@ func TestParse(t *testing.T) {
 		},
 		{
 			name:          "Парсинг в конце с превышением числа строк",
-			args:          args{filePath: "./stub.csv", fromByte: 1542, rowsLimit: 2},
+			args:          args{filePath: "./stub.csv", fromByte: 1542, rowsLimit: 2, threadsCount: 1},
 			wantRecords:   [][]string{nil},
 			wantNewOffset: 1543,
 			wantIsEOF:     true,
@@ -60,7 +61,7 @@ func TestParse(t *testing.T) {
 		},
 		{
 			name:          "Парсинг в конце с превышением сдвига",
-			args:          args{filePath: "./stub.csv", fromByte: 1545, rowsLimit: 1},
+			args:          args{filePath: "./stub.csv", fromByte: 1545, rowsLimit: 1, threadsCount: 1},
 			wantRecords:   emptyRecords,
 			wantNewOffset: 1543,
 			wantIsEOF:     true,
@@ -68,11 +69,12 @@ func TestParse(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for i := 0; i <= len(tests)-1; i++ {
+		tt := &tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			f, _ := os.Open(tt.args.filePath)
 
-			gotRecords, gotNewOffset, gotIsEOF, err := Parse(f, tt.args.fromByte, tt.args.rowsLimit)
+			gotRecords, gotNewOffset, gotIsEOF, err := NewParser(f, tt.args.fromByte, tt.args.rowsLimit, tt.args.threadsCount).Parse()
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Parse() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -105,7 +107,7 @@ func TestPrepare1G(t *testing.T) {
 func BenchmarkParse(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		f, _ := os.Open("./stub.csv")
-		Parse(f, 0, 1)
+		NewParser(f, 0, 1, 1).Parse()
 	}
 }
 
@@ -117,7 +119,7 @@ func BenchmarkParse1G(b *testing.B) {
 	fromByte := int64(0)
 	for {
 		f, _ := os.Open("./stub_1g.csv")
-		_, newFromByte, isEOF, err := Parse(f, fromByte, 1000)
+		_, newFromByte, isEOF, err := NewParser(f, fromByte, 1000, 1).Parse()
 		if err != nil || isEOF == true {
 			break
 		}

@@ -61,7 +61,12 @@ curl 127.0.0.1:8080/books \
 
 Запуск приложения
 
-`docker run -it --rm -v ./internal/csv-parser/stub.csv:/app/stub.csv ko.local/github.com/driceman/demo/cmd/files-parser:latest -fileType=csv -filePath=/app/stub.csv -fromByte=0 -rowsLimit=11`
+`docker run -it --rm -v ./internal/csv-parser/stub.csv:/app/stub.csv ko.local/github.com/driceman/demo/cmd/files-parser:latest --file_type csv --file_path /app/stub.csv --from_byte 0 --rows_limit 11 --threads_count 1`
+
+или
+
+`docker run -it --rm -v ./internal/csv-parser/stub.csv:/app/stub.csv -e FILE_TYPE csv -e FILE_PATH /app/stub.csv -e FROM_BYTE 0 -e ROWS_LIMIT 11 -e THREADS_COUNT 1 ko.local/github.com/driceman/demo/cmd/files-parser:latest`
+
 
 Тестирование
 
@@ -83,6 +88,6 @@ curl 127.0.0.1:8080/books \
 
 ```
 go build ./cmd/files-parser
-./files-parser -fileType=csv -filePath=./internal/csv-parser/stub.csv -fromByte=0 -rowsLimit=11 -memProfilePath=prof.mprof
+./files-parser --file_type csv --file_path ./internal/csv-parser/stub.csv --from_byte 0 --rows_limit 11 --threads_count 1 --mem_profile_path prof.mprof
 go tool pprof files-parser prof.mprof
 ```
