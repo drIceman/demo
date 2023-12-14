@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"log"
 	"os"
 	"os/signal"
@@ -13,55 +12,57 @@ import (
 
 	csvparser "github.com/drIceman/demo/internal/csv-parser"
 	"github.com/panjf2000/ants/v2"
+	"github.com/spf13/pflag"
+	"github.com/spf13/viper"
 )
 
 func main() {
-	fileType := flag.String("fileType", "", "Допустимые значения: csv")
-	filePath := flag.String("filePath", "", "")
-	fromByte := flag.Int64("fromByte", 0, "")
-	rowsLimit := flag.Int64("rowsLimit", 1, "")
-	threadsCount := flag.Int64("threadsCount", 1, "")
-	memProfilePath := flag.String("memProfilePath", "", "")
+	pflag.String("file_type", "", "Допустимые значения: csv")
+	pflag.String("file_path", "", "")
+	pflag.Int64("from_byte", 0, "")
+	pflag.Int64("rows_limit", 1, "")
+	pflag.Int64("threads_count", 1, "")
+	pflag.String("mem_profile_path", "", "")
+	pflag.Parse()
+	viper.BindPFlags(pflag.CommandLine)
+	viper.AutomaticEnv()
+	fileType := viper.GetString("file_type")
+	filePath := viper.GetString("file_path")
+	fromByte := viper.GetInt64("from_byte")
+	rowsLimit := viper.GetInt64("rows_limit")
+	threadsCount := viper.GetInt64("threads_count")
+	memProfilePath := viper.GetString("mem_profile_path")
 
-	flag.Parse()
-
-	// *fileType = "csv"
-	// *filePath = "../../internal/csv-parser/stub.csv"
-	// *fromByte = 0
-	// *rowsLimit = 2
-	// *threadsCount = 2
-	// *memProfilePath = ""
-
-	//stub
-	//+ -fromByte=0 -rowsLimit=1 -threadsCount=5
-	//+ -fromByte=0 -rowsLimit=5 -threadsCount=1
-	//+ -fromByte=131 -rowsLimit=5 -threadsCount=1
-	//+- -fromByte=131 -rowsLimit=1 -threadsCount=5
-	//+ -fromByte=131 -rowsLimit=2 -threadsCount=2
-	//+ -fromByte=0 -rowsLimit=2 -threadsCount=2
-
-	if *fileType != "csv" {
+	if fileType != "csv" {
 		log.Fatalln("Тип файла не поддерживается")
 	}
 
-	file, err := os.Open(*filePath)
+	file, err := os.Open(filePath)
 	if err != nil {
 		log.Fatalln(err)
 	}
 	defer file.Close()
 
-	batchesFromByte, err := csvparser.CalculateBatchesFromByte(file, *fromByte, *rowsLimit, *threadsCount)
+	batchesFromByte, err := csvparser.NewParser(file, fromByte, rowsLimit, threadsCount).CalculateBatchesFromByte()
 	if err != nil {
 		log.Fatalln(err)
 	}
 
 	defer ants.Release()
 	var wg sync.WaitGroup
-	for _, fromByte := range batchesFromByte {
-		fromByte := fromByte
+
+	for i := 0; i <= len(batchesFromByte)-1; i++ {
+		i := i
 		task := func() {
-			log.Println(csvparser.Parse(file, fromByte, *rowsLimit))
-			profile(*memProfilePath)
+			file, err := os.Open(filePath)
+			if err != nil {
+				log.Fatalln(err)
+			}
+			defer file.Close()
+
+			log.Println(csvparser.NewParser(file, batchesFromByte[i], rowsLimit, 1).Parse())
+
+			profile(memProfilePath)
 			wg.Done()
 		}
 		wg.Add(1)
